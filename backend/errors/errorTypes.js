@@ -46,6 +46,14 @@ const IMAGE_ERRORS = {
     FETCH_FAILED: {
         message: 'Failed to fetch images',
         status: 500
+    },
+    FILE_STREAM_FAILED: {
+        message: 'Failed to stream image file',
+        status: 500
+    },
+    FILE_STREAM_NOT_FOUND: {
+        message: 'Image file not found',
+        status: 404
     }
 };
 

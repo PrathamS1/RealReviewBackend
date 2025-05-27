@@ -3,6 +3,7 @@ const {
   insertImage,
   deleteImage,
   getImageById,
+  streamImageFromS3,
 } = require("../services/imageService");
 const { AppError, IMAGE_ERRORS, handleDatabaseError, handleImageError } = require("../errors/errorHandler");
 
@@ -107,9 +108,34 @@ const deleteImageById = async (req, res) => {
   }
 };
 
+const getImageFromS3 = async (req, res) => {
+  const key = req.params.key;
+  try {
+    const streamImage = await streamImageFromS3(key);
+
+    // Handle stream errors
+    streamImage.on('error', (err) => {
+      console.error('Stream error:', err);
+      return res.status(IMAGE_ERRORS.FILE_STREAM_FAILED.status).json({ error: IMAGE_ERRORS.FILE_STREAM_FAILED.message });
+    });
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    
+    streamImage.pipe(res);
+  } catch (error) {
+    console.error("Error streaming image from S3:", error);
+    if (error instanceof AppError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    return res.status(IMAGE_ERRORS.FILE_STREAM_FAILED.status).json({ error: IMAGE_ERRORS.FILE_STREAM_FAILED.message });
+  }
+};
+
 module.exports = {
     getAllImageData,
     uploadImage,
     deleteImageById,
-    getImagesById
+    getImagesById,
+    getImageFromS3
 };

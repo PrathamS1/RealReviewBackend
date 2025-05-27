@@ -8,6 +8,7 @@ const {
 } = require("../repository/imageRepo");
 const Image = require("../models/imageModel");
 const { AppError, IMAGE_ERRORS, handleDatabaseError, handleImageError } = require("../errors/errorHandler");
+const { uploadBufferToS3, deleteFileFromS3, getFileFromS3 } = require("../middleware/s3Uploader");
 
 //^ This function calls the repository function to get image data from the database
 const getImages = async () => {
@@ -86,9 +87,13 @@ const insertImage = async (req) => {
   );
 
   try {
+    const uploadSuccess = await uploadBufferToS3(file.buffer, uniqueName, file.mimetype);
+    if (!uploadSuccess) {
+      throw new AppError(IMAGE_ERRORS.UPLOAD_FAILED);
+    }
+    
+    imageInstance.filename = uniqueName;
     const image = await insertImageData(imageInstance);
-    const savePath = path.join(__dirname, "../imageUploads", uniqueName);
-    fs.writeFileSync(savePath, file.buffer);
 
     const imageObj = new Image(
       image.filename,
@@ -101,10 +106,12 @@ const insertImage = async (req) => {
     return imageObj;
   } catch (error) {
     console.error("Error inserting image in image repo:", error);
-    const savePath = path.join(__dirname, "../imageUploads", uniqueName);
-    if (fs.existsSync(savePath)) {
-      fs.unlinkSync(savePath);
+    try {
+      await deleteFileFromS3(uniqueName);
+    } catch (s3err) {
+      console.error("Failed to clean up image from S3:", s3err);
     }
+  
     if (error instanceof AppError) {
       throw error;
     }
@@ -134,14 +141,10 @@ const deleteImage = async (id) => {
     imageObj.id = image.id;
     imageObj.timestamp = image.timestamp;
 
-    const file = image.filename;
-    const filePath = path.join(__dirname, "../imageUploads", file);
-    
     try {
-      fs.unlinkSync(filePath);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-      throw new AppError(IMAGE_ERRORS.FILE_DELETE_FAILED);
+      await deleteFileFromS3(image.filename);
+    } catch (s3err) {
+      console.error("Failed to clean up image from S3:", s3err);
     }
 
     await deleteImageData(id);
@@ -160,9 +163,23 @@ const deleteImage = async (id) => {
   }
 };
 
+const streamImageFromS3 = async (key) => {
+  try {
+    const streamImage = getFileFromS3(key);
+    return streamImage;
+  } catch (error) {
+    console.error("Error streaming image from S3:", error);
+    if (error.code === 'NoSuchKey') {
+      throw new AppError(IMAGE_ERRORS.FILE_STREAM_NOT_FOUND);
+    }
+    throw new AppError(IMAGE_ERRORS.FILE_STREAM_FAILED);
+  }
+};
+
 module.exports = {
   getImages,
   insertImage,
   deleteImage,
   getImageById,
+  streamImageFromS3,
 };
