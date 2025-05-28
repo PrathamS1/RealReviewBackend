@@ -8,7 +8,7 @@ const {
 } = require("../repository/imageRepo");
 const Image = require("../models/imageModel");
 const { AppError, IMAGE_ERRORS, handleDatabaseError, handleImageError } = require("../errors/errorHandler");
-const { uploadBufferToS3, deleteFileFromS3, getFileFromS3 } = require("../middleware/s3Uploader");
+const { uploadBufferToS3, deleteFileFromS3, getFileFromS3 } = require("./s3Uploader");
 
 //^ This function calls the repository function to get image data from the database
 const getImages = async () => {
