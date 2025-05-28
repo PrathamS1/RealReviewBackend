@@ -112,13 +112,7 @@ const getImageFromS3 = async (req, res) => {
   const key = req.params.key;
   try {
     const streamImage = await streamImageFromS3(key);
-
-    // Handle stream errors
-    streamImage.on('error', (err) => {
-      console.error('Stream error:', err);
-      return res.status(IMAGE_ERRORS.FILE_STREAM_FAILED.status).json({ error: IMAGE_ERRORS.FILE_STREAM_FAILED.message });
-    });
-
+    
     res.setHeader('Content-Type', 'image/jpeg');
     res.setHeader('Cache-Control', 'public, max-age=31536000');
     

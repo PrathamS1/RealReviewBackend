@@ -181,7 +181,20 @@ const deleteImage = async (id) => {
 const streamImageFromS3 = async (key) => {
   try {
     const streamImage = getFileFromS3(key);
-    return streamImage;
+    
+    return new Promise((resolve, reject) => {
+      streamImage.on('error', (err) => {
+        console.error('Stream error:', err);
+        if (err.code === "NoSuchKey") {
+          reject(new AppError(IMAGE_ERRORS.FILE_STREAM_NOT_FOUND));
+        }
+        reject(new AppError(IMAGE_ERRORS.FILE_STREAM_FAILED));
+      });
+      
+      streamImage.on('readable', () => {
+        resolve(streamImage);
+      });
+    });
   } catch (error) {
     console.error("Error streaming image from S3:", error);
     if (error.code === "NoSuchKey") {
