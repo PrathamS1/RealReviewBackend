@@ -93,9 +93,30 @@ const GENERIC_ERRORS = {
     }
 };
 
+//! S3 Bucket related errors
+const S3_ERRORS = {
+    BUCKET_NOT_FOUND: {
+        message: 'S3 bucket not found',
+        status: 404
+    },
+    UPLOAD_FAILED: {
+        message: 'Failed to upload image file',
+        status: 500
+    },
+    DELETE_FAILED: {
+        message: 'Failed to delete image file',
+        status: 500
+    },
+    FILE_NOT_FOUND: {
+        message: 'Image File not found',
+        status: 404
+    }
+};
+
 module.exports = {
     DB_ERRORS,
     IMAGE_ERRORS,
     RATING_ERRORS,
-    GENERIC_ERRORS
+    GENERIC_ERRORS,
+    S3_ERRORS
 }; 

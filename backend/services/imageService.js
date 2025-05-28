@@ -7,14 +7,25 @@ const {
   deleteImageData,
 } = require("../repository/imageRepo");
 const Image = require("../models/imageModel");
-const { AppError, IMAGE_ERRORS, handleDatabaseError, handleImageError } = require("../errors/errorHandler");
-const { uploadBufferToS3, deleteFileFromS3, getFileFromS3 } = require("./s3Uploader");
+const {
+  AppError,
+  IMAGE_ERRORS,
+  handleDatabaseError,
+  handleImageError,
+} = require("../errors/errorHandler");
+const {
+  uploadBufferToS3,
+  deleteFileFromS3,
+  getFileFromS3,
+  checkBucketExists,
+} = require("./s3Uploader");
+const { S3_ERRORS } = require("../errors/errorTypes");
 
 //^ This function calls the repository function to get image data from the database
 const getImages = async () => {
   try {
     const images = await getAllImageData();
-    return images.map(image => {
+    return images.map((image) => {
       const imageObj = new Image(
         image.filename,
         image.location,
@@ -23,7 +34,7 @@ const getImages = async () => {
       );
       imageObj.id = image.id;
       imageObj.timestamp = image.timestamp;
-      return imageObj;
+      return imageObj;  
     });
   } catch (error) {
     console.error("Error fetching images from image repo:", error);
@@ -46,7 +57,7 @@ const getImageById = async (id) => {
     if (!image) {
       throw new AppError(IMAGE_ERRORS.NOT_FOUND);
     }
-    
+
     const imageObj = new Image(
       image.filename,
       image.location,
@@ -77,21 +88,23 @@ const insertImage = async (req) => {
   if (!file) {
     throw new AppError(IMAGE_ERRORS.NO_FILE);
   }
-
+  try{
+    await checkBucketExists();
+  } catch (error) {
+    console.error("S3 bucket does not exist or is inaccessible:", error);
+    throw new AppError(S3_ERRORS.BUCKET_NOT_FOUND);
+  }
   const uniqueName = Date.now() + "-" + file.originalname;
-  const imageInstance = new Image(
-    uniqueName,
-    location,
-    submitted_by,
-    rating
-  );
+  const imageInstance = new Image(uniqueName, location, submitted_by, rating);
 
   try {
-    const uploadSuccess = await uploadBufferToS3(file.buffer, uniqueName, file.mimetype);
-    if (!uploadSuccess) {
-      throw new AppError(IMAGE_ERRORS.UPLOAD_FAILED);
+    try {
+      await uploadBufferToS3(file.buffer, uniqueName, file.mimetype);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      throw new AppError(S3_ERRORS.UPLOAD_FAILED);
     }
-    
+
     imageInstance.filename = uniqueName;
     const image = await insertImageData(imageInstance);
 
@@ -110,8 +123,9 @@ const insertImage = async (req) => {
       await deleteFileFromS3(uniqueName);
     } catch (s3err) {
       console.error("Failed to clean up image from S3:", s3err);
+      throw new AppError(S3_ERRORS.DELETE_FAILED);
     }
-  
+
     if (error instanceof AppError) {
       throw error;
     }
@@ -145,6 +159,7 @@ const deleteImage = async (id) => {
       await deleteFileFromS3(image.filename);
     } catch (s3err) {
       console.error("Failed to clean up image from S3:", s3err);
+      throw new AppError(S3_ERRORS.DELETE_FAILED);
     }
 
     await deleteImageData(id);
@@ -169,7 +184,7 @@ const streamImageFromS3 = async (key) => {
     return streamImage;
   } catch (error) {
     console.error("Error streaming image from S3:", error);
-    if (error.code === 'NoSuchKey') {
+    if (error.code === "NoSuchKey") {
       throw new AppError(IMAGE_ERRORS.FILE_STREAM_NOT_FOUND);
     }
     throw new AppError(IMAGE_ERRORS.FILE_STREAM_FAILED);
