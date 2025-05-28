@@ -34,7 +34,7 @@ const getImages = async () => {
       );
       imageObj.id = image.id;
       imageObj.timestamp = image.timestamp;
-      return imageObj;  
+      return imageObj;
     });
   } catch (error) {
     console.error("Error fetching images from image repo:", error);
@@ -88,7 +88,7 @@ const insertImage = async (req) => {
   if (!file) {
     throw new AppError(IMAGE_ERRORS.NO_FILE);
   }
-  try{
+  try {
     await checkBucketExists();
   } catch (error) {
     console.error("S3 bucket does not exist or is inaccessible:", error);
@@ -181,19 +181,16 @@ const deleteImage = async (id) => {
 const streamImageFromS3 = async (key) => {
   try {
     const streamImage = getFileFromS3(key);
-    
+
     return new Promise((resolve, reject) => {
-      streamImage.on('error', (err) => {
-        console.error('Stream error:', err);
+      streamImage.on("error", (err) => {
+        console.error("Stream error:", err);
         if (err.code === "NoSuchKey") {
           reject(new AppError(IMAGE_ERRORS.FILE_STREAM_NOT_FOUND));
         }
         reject(new AppError(IMAGE_ERRORS.FILE_STREAM_FAILED));
       });
-      
-      streamImage.on('readable', () => {
-        resolve(streamImage);
-      });
+      resolve(streamImage);
     });
   } catch (error) {
     console.error("Error streaming image from S3:", error);
