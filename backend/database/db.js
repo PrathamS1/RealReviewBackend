@@ -1,50 +1,50 @@
-const { Pool } = require("pg");
-require("dotenv").config();
+const dynamoose = require('dynamoose');
+require('dotenv').config();
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
-pool
-  .connect()
-  .then(() => console.log("Connected to the PostgreSQL database"))
-  .catch((err) => console.error("Error connecting to the database", err));
-
-//* Creating images table if it does not exist
-pool.query(`
-  CREATE TABLE IF NOT EXISTS images (
-    id SERIAL PRIMARY KEY,
-    filename TEXT NOT NULL,
-    location TEXT NOT NULL,
-    submitted_by TEXT NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    rating NUMERIC DEFAULT NULL
-  );`, 
-  (err) => {
-  if (err) {
-    console.error('Error creating images table:', err);
-  } else {
-    console.log('Images table is ready.');
-  }
+// Configure Dynamoose with IAM role
+dynamoose.aws.sdk.config.update({
+    region: process.env.AWS_REGION || 'us-east-1'
 });
 
-//* Creating ratings table if it does not exist
-pool.query(`
-  CREATE TABLE IF NOT EXISTS ratings (
-    id SERIAL PRIMARY KEY,
-    image_id INTEGER REFERENCES images(id) ON DELETE CASCADE,
-    rating_value INTEGER NOT NULL CHECK (rating_value >= 1 AND rating_value <= 5),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );`,
-  (err) => {
-  if (err) {
-    console.error('Error creating ratings table:', err);
-  } else {
-    console.log('Ratings table is ready.');
-  }
+// Configure Dynamoose defaults
+dynamoose.model.defaults.set({
+    create: true, // Create table if it doesn't exist
+    waitForActive: true,
+    waitForActiveTimeout: 300000 // 5 min timeout
 });
 
-module.exports = pool;
+// Import entity models
+const Image = require('../models/imageModel');
+const Rating = require('../models/ratingModel');
+
+// Log DynamoDB connection status
+dynamoose.aws.sdk.config.getCredentials((err) => {
+    if (err) {
+        console.error('Error connecting to DynamoDB:', err);
+    } else {
+        console.log('Successfully connected to DynamoDB');
+    }
+});
+
+// Add table creation logging
+Image.events.on('table:created', (table) => {
+    console.log(`Images table created successfully: ${table.name}`);
+});
+
+Image.events.on('table:error', (err) => {
+    console.error('Error creating Images table:', err);
+});
+
+Rating.events.on('table:created', (table) => {
+    console.log(`Ratings table created successfully: ${table.name}`);
+});
+
+Rating.events.on('table:error', (err) => {
+    console.error('Error creating Ratings table:', err);
+});
+
+module.exports = {
+    dynamoose,
+    Image,
+    Rating
+};

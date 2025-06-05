@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 80;
 
 app.use(    
   cors({
-    // origin: "http://localhost:5173",
     origin: "https://realreviewfr.netlify.app/",
   })
 );

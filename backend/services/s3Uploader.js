@@ -1,40 +1,45 @@
 require("dotenv").config();
-const AWS = require("aws-sdk");
+import { S3Client, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 
-AWS.config.update({ region: process.env.AWS_REGION });
-
-const s3 = new AWS.S3();
+const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 async function uploadBufferToS3(buffer, filename, mimeType = "image/jpeg") {
-  const params = {
-    Bucket: BUCKET_NAME,
-    Key: `uploads/${filename}`,
-    Body: buffer,
-    ContentType: mimeType,
-  };
-  await s3.upload(params).promise();
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: BUCKET_NAME,
+      Key: `uploads/${filename}`,
+      Body: buffer,
+      ContentType: mimeType,
+    },
+  });
+  await upload.done();
 }
 
 async function deleteFileFromS3(key) {
-  const params = {
+  const command = new DeleteObjectCommand({
     Bucket: BUCKET_NAME,
     Key: `uploads/${key}`,
-  };
-  return s3.deleteObject(params).promise();
+  });
+  return s3Client.send(command);
 }
+
 function getFileFromS3(filename) {
-  const params = {
+  const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: `uploads/${filename}`,
-  };
-
-  return s3.getObject(params).createReadStream();
+  });
+  return s3Client.send(command);
 }
 
 async function checkBucketExists() {
-    await s3.headBucket({ Bucket: BUCKET_NAME }).promise();
+  const command = new HeadBucketCommand({
+    Bucket: BUCKET_NAME,
+  });
+  await s3Client.send(command);
 }
 
 module.exports = { uploadBufferToS3, deleteFileFromS3, getFileFromS3, checkBucketExists };
