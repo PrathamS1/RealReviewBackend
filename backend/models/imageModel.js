@@ -34,7 +34,7 @@ const imageSchema = new dynamoose.Schema({
 }, {
     timestamps: true
 });
-
+console.log("Image Schema:", imageSchema.hashKey);
 const Image = dynamoose.model('Images', imageSchema);
 
 module.exports = Image;

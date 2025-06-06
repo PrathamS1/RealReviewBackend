@@ -1,6 +1,7 @@
+const { S3Client, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand } = require("@aws-sdk/client-s3");
+const { Upload } = require("@aws-sdk/lib-storage");
+const { Readable } = require('stream');
 require("dotenv").config();
-import { S3Client, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
@@ -27,12 +28,33 @@ async function deleteFileFromS3(key) {
   return s3Client.send(command);
 }
 
-function getFileFromS3(filename) {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: `uploads/${filename}`,
-  });
-  return s3Client.send(command);
+async function getFileFromS3(filename) {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: `uploads/${filename}`,
+    });
+    const response = await s3Client.send(command);
+    
+    if (!response.Body) {
+      throw new Error('No body in response');
+    }
+
+    // Convert the response body to a readable stream
+    const stream = response.Body instanceof Readable 
+      ? response.Body 
+      : Readable.from(response.Body);
+
+    return {
+      stream,
+      contentType: response.ContentType || 'image/jpeg'
+    };
+  } catch (error) {
+    if (error.name === 'NoSuchKey') {
+      throw new Error('FILE_NOT_FOUND');
+    }
+    throw error;
+  }
 }
 
 async function checkBucketExists() {

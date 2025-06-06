@@ -108,21 +108,18 @@ const deleteImageById = async (req, res) => {
   }
 };
 
-const getImageFromS3 = async (req, res) => {
-  const key = req.params.key;
+const streamImage = async (req, res) => {
   try {
-    const streamImage = await streamImageFromS3(key);
-    
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    
-    streamImage.pipe(res);
+    const { key } = req.params;
+    const { stream, contentType } = await streamImageFromS3(key);
+    res.setHeader("Content-Type", contentType);
+    stream.pipe(res);
   } catch (error) {
-    console.error("Error streaming image from S3:", error);
-    if (error instanceof AppError) {
-      return res.status(error.status).json({ error: error.message });
-    }
-    return res.status(IMAGE_ERRORS.FILE_STREAM_FAILED.status).json({ error: IMAGE_ERRORS.FILE_STREAM_FAILED.message });
+    console.error("Error streaming image:", error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -131,5 +128,5 @@ module.exports = {
     uploadImage,
     deleteImageById,
     getImagesById,
-    getImageFromS3
+    streamImage
 };

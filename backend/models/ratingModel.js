@@ -35,6 +35,8 @@ const ratingSchema = new dynamoose.Schema({
     timestamps: true
 });
 
+console.log("Rating Schema:", ratingSchema.hashKey);
+
 const Rating = dynamoose.model('Ratings', ratingSchema);
 
 module.exports = Rating; 

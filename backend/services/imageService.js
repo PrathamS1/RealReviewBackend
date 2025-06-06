@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const {
   getAllImageData,
   insertImageData,
@@ -26,12 +24,12 @@ const getImages = async () => {
   try {
     const images = await getAllImageData();
     return images.map((image) => {
-      const imageObj = new Image(
-        image.filename,
-        image.location,
-        image.submitted_by,
-        image.rating
-      );
+      const imageObj = new Image({
+        filename: image.filename,
+        location: image.location,
+        submitted_by: image.submitted_by,
+        rating: image.rating
+      });
       imageObj.id = image.id;
       imageObj.timestamp = image.timestamp;
       return imageObj;
@@ -58,12 +56,12 @@ const getImageById = async (id) => {
       throw new AppError(IMAGE_ERRORS.NOT_FOUND);
     }
 
-    const imageObj = new Image(
-      image.filename,
-      image.location,
-      image.submitted_by,
-      image.rating
-    );
+    const imageObj = new Image({
+      filename: image.filename,
+      location: image.location,
+      submitted_by: image.submitted_by,
+      rating: image.rating
+    });
     imageObj.id = image.id;
     imageObj.timestamp = image.timestamp;
     return imageObj;
@@ -88,6 +86,16 @@ const insertImage = async (req) => {
   if (!file) {
     throw new AppError(IMAGE_ERRORS.NO_FILE);
   }
+
+  // Convert rating to number and validate
+  const ratingValue = rating ? Number(rating) : null;
+  if (ratingValue !== null && (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5)) {
+    throw new AppError({
+      message: 'Rating must be a number between 1 and 5',
+      status: 400
+    });
+  }
+
   try {
     await checkBucketExists();
   } catch (error) {
@@ -95,7 +103,13 @@ const insertImage = async (req) => {
     throw new AppError(S3_ERRORS.BUCKET_NOT_FOUND);
   }
   const uniqueName = Date.now() + "-" + file.originalname;
-  const imageInstance = new Image(uniqueName, location, submitted_by, rating);
+  const imageInstance = new Image({
+    filename: uniqueName,
+    location: location,
+    submitted_by: submitted_by,
+    rating: ratingValue,
+    timestamp: new Date()
+  });
 
   try {
     try {
@@ -105,15 +119,14 @@ const insertImage = async (req) => {
       throw new AppError(S3_ERRORS.UPLOAD_FAILED);
     }
 
-    imageInstance.filename = uniqueName;
     const image = await insertImageData(imageInstance);
 
-    const imageObj = new Image(
-      image.filename,
-      image.location,
-      image.submitted_by,
-      image.rating
-    );
+    const imageObj = new Image({
+      filename: image.filename,
+      location: image.location,
+      submitted_by: image.submitted_by,
+      rating: image.rating
+    });
     imageObj.id = image.id;
     imageObj.timestamp = image.timestamp;
     return imageObj;
@@ -146,26 +159,23 @@ const deleteImage = async (id) => {
       throw new AppError(IMAGE_ERRORS.NOT_FOUND);
     }
 
-    const imageObj = new Image(
-      image.filename,
-      image.location,
-      image.submitted_by,
-      image.rating
-    );
-    imageObj.id = image.id;
-    imageObj.timestamp = image.timestamp;
-
+    // First delete from S3
     try {
       await deleteFileFromS3(image.filename);
     } catch (s3err) {
-      console.error("Failed to clean up image from S3:", s3err);
+      console.error("Failed to delete image from S3:", s3err);
       throw new AppError(S3_ERRORS.DELETE_FAILED);
     }
 
-    await deleteImageData(id);
-    return imageObj;
+    // Then delete from database
+    const deletedImage = await deleteImageData(id);
+    if (!deletedImage) {
+      throw new AppError(IMAGE_ERRORS.DELETE_FAILED);
+    }
+
+    return deletedImage;
   } catch (error) {
-    console.error("Error deleting image in image repo:", error);
+    console.error("Error deleting image:", error);
     if (error instanceof AppError) {
       throw error;
     }
@@ -180,21 +190,11 @@ const deleteImage = async (id) => {
 
 const streamImageFromS3 = async (key) => {
   try {
-    const streamImage = getFileFromS3(key);
-
-    return new Promise((resolve, reject) => {
-      streamImage.on("error", (err) => {
-        console.error("Stream error:", err);
-        if (err.code === "NoSuchKey") {
-          reject(new AppError(IMAGE_ERRORS.FILE_STREAM_NOT_FOUND));
-        }
-        reject(new AppError(IMAGE_ERRORS.FILE_STREAM_FAILED));
-      });
-      resolve(streamImage);
-    });
+    const { stream, contentType } = await getFileFromS3(key);
+    return { stream, contentType };
   } catch (error) {
     console.error("Error streaming image from S3:", error);
-    if (error.code === "NoSuchKey") {
+    if (error.message === 'FILE_NOT_FOUND') {
       throw new AppError(IMAGE_ERRORS.FILE_STREAM_NOT_FOUND);
     }
     throw new AppError(IMAGE_ERRORS.FILE_STREAM_FAILED);

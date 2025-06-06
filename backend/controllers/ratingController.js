@@ -4,14 +4,26 @@ const { AppError, RATING_ERRORS, handleDatabaseError, handleRatingError } = requ
 //^ Controller to handle rating an image
 const rateImage = async (req, res) => {
     const { id } = req.params;
-    const { rating } = req.body;
+    const { rating, submitted_by, review } = req.body;
 
     try {
         if (!rating) {
             throw new AppError(RATING_ERRORS.INVALID_RATING);
         }
+        if (!submitted_by) {
+            throw new AppError({
+                message: 'Submitted by field is required',
+                status: 400
+            });
+        }
 
-        const result = await addRating(id, rating);
+        // Convert rating to number and validate
+        const ratingValue = Number(rating);
+        if (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+            throw new AppError(RATING_ERRORS.INVALID_RATING);
+        }
+
+        const result = await addRating(id, ratingValue, submitted_by, review);
         res.status(201).json({
             message: "Rating added successfully",
             rating: result.rating,

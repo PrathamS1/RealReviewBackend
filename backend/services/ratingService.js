@@ -8,7 +8,7 @@ const { getImageById } = require("./imageService");
 const { AppError, handleDatabaseError, handleRatingError, RATING_ERRORS } = require("../errors/errorHandler");
 
 //* Service function to add a rating to an image
-const addRating = async (imageId, ratingValue) => {
+const addRating = async (imageId, ratingValue, submitted_by, review = '') => {
     try {
         const image = await getImageById(imageId);
         if (!image) {
@@ -18,7 +18,13 @@ const addRating = async (imageId, ratingValue) => {
             throw new AppError(RATING_ERRORS.INVALID_RATING);
         }
 
-        const rating = new Rating(imageId, ratingValue);
+        const rating = new Rating({
+            image_id: imageId,
+            rating_value: ratingValue,
+            submitted_by: submitted_by,
+            review: review,
+            created_at: new Date().toISOString()
+        });
         const result = await insertRating(rating);
         
         if (!result) {
@@ -26,10 +32,12 @@ const addRating = async (imageId, ratingValue) => {
         }
 
         const averageRating = await getAverageRatingByImageId(imageId);
-        const ratingResponse = new Rating(
-            result.image_id,
-            result.rating_value
-        );
+        const ratingResponse = new Rating({
+            image_id: result.image_id,
+            rating_value: result.rating_value,
+            submitted_by: result.submitted_by,
+            review: result.review
+        });
         ratingResponse.id = result.id;
         ratingResponse.created_at = result.created_at;
 
@@ -63,10 +71,12 @@ const getImageRatings = async (imageId) => {
         const averageRating = await getAverageRatingByImageId(imageId);
         
         const transformedRatings = ratings.map(rating => {
-            const ratingObj = new Rating(
-                rating.image_id,
-                rating.rating_value
-            );
+            const ratingObj = new Rating({
+                image_id: rating.image_id,
+                rating_value: rating.rating_value,
+                submitted_by: rating.submitted_by,
+                review: rating.review
+            });
             ratingObj.id = rating.id;
             ratingObj.created_at = rating.created_at;
             return ratingObj;
