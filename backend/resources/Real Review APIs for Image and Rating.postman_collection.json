@@ -1,0 +1,277 @@
+{
+	"info": {
+		"_postman_id": "a20d9406-6f6a-458b-a0d6-46502ee8c70a",
+		"name": "Real Review APIs for Image and Rating",
+		"description": "# RealReview API – Postman Collection\n\nThis folder contains the Postman Collection and Environment that I used to test and demonstrate the API endpoints for the **RealReview** backend deployed on my EC2 instance.\n\n---\n\n## Included Files\n\n| File Name | Purpose |\n| --- | --- |\n| `Real Review APIs for Image and Rating.postman_collection.json` | Contains all the API routes I created and tested. |\n| `Real Review Local.postman_environment.json` | Environment with the EC2 base URL (for easier testing) |\n\n---\n\n## How to Run This\n\n### 1\\. **Import in Postman**\n\n- Open Postman.\n    \n- Click **\"Import\"** at the top-left.\n    \n- Select `realreview-api.postman_collection.json`.\n    \n- Repeat to import `realreview-ec2.postman_environment.json`.\n    \n\n### 2\\. **Use the Environment**\n\n- Select the environment `RealReview EC2` from the dropdown in the top-right corner.\n    \n- This will automatically use the correct `base_url` (e.g., `http://`).\n    \n\n---\n\n## 🔧 Available API Endpoints\n\n| Method | Route | Description |\n| --- | --- | --- |\n| POST | `{{base_url}}/api/images/` | Upload a new image |\n| GET | `{{base_url}}/api/images/` | Retrieve all images |\n| GET | `{{base_url}}/api/images/:id` | Retrieve a specific image |\n| DELETE | `{{base_url}}/api/images/:id` | Delete an image |\n| POST | `{{base_url}}/api/images/:id/rate` | Submit a rating |\n| GET | `{{base_url}}/api/images/:id/ratings` | Get image rating summary |\n| GET | {{base_url}}/api/images/image/:filename | View the uploaded image |\n\n> Replace `:id` with the actual image ID received from POST or GET responses.  \nReplace `:filename` with the actual filename of the image form the GET responses. \n  \n\n- I have deployed the backend to an EC2 instance with port `80` exposed.\n    \n- Environment variable `base_url` points to the EC2 IP for quick testing.\n    \n- I’ve tested all endpoints and ensured they return expected responses.\n    \n\n---\n\n## Form Data is used for Inserting Image Upload\n\n- Endpoint: `POST {{base_url}}/api/images/`\n    \n- Body Type: `form-data`\n    \n    - Key: `image`\n        \n    - Value: (select a file)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37228848"
+	},
+	"item": [
+		{
+			"name": "Get All Images Data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/images",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images"
+					]
+				},
+				"description": "This is a GET request to fetch all images data from the database."
+			},
+			"response": []
+		},
+		{
+			"name": "Post Image Data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Successful POST request\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"description": "Upload image file",
+							"type": "file",
+							"src": "/C:/Users/pratham/Downloads/pexels-binyaminmellish-1396122.jpg"
+						},
+						{
+							"key": "location",
+							"value": "\"Delhi\"",
+							"description": "Name of the location (e.g. \"Pune\")",
+							"type": "text"
+						},
+						{
+							"key": "submitted_by",
+							"value": "\"Pratham\"",
+							"description": "Name of the user (e.g. \"User1\")",
+							"type": "text"
+						},
+						{
+							"key": "rating",
+							"value": "4",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/api/images",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images"
+					]
+				},
+				"description": "This is a POST request, submitting image data to an API via the body type `form-data`. This request submits the form data, and the data is reflected in the response."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Image Data by Id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Successful PUT request\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/images/b45bc927-cda4-4f86-a3ea-47b98c9d5a1d",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images",
+						"b45bc927-cda4-4f86-a3ea-47b98c9d5a1d"
+					]
+				},
+				"description": "This is a GET request to fetch data for an specific image using image ID. The api is `/api/images/:id` where replacing id with the specific image fetches the record associated with the given image id."
+			},
+			"response": []
+		},
+		{
+			"name": "Delete image data by Id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Successful DELETE request\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 202, 204]);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/images/e0bbf800-73a0-4aa6-8bde-82dc63777868",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images",
+						"e0bbf800-73a0-4aa6-8bde-82dc63777868"
+					]
+				},
+				"description": "This is a DELETE request to delete data of an specific image using image ID. The api is `/api/images/:id` where replacing id with the specific image deletes the record associated with the given image id along with deleting the records from ratings table associated with the image id."
+			},
+			"response": []
+		},
+		{
+			"name": "Rate an Image with Id",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"rating\":3,\r\n    \"submitted_by\":\"Pratham\",\r\n    \"review\":\"Well\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/images/b45bc927-cda4-4f86-a3ea-47b98c9d5a1d/rate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images",
+						"b45bc927-cda4-4f86-a3ea-47b98c9d5a1d",
+						"rate"
+					]
+				},
+				"description": "This is a POST request for adding a rating to a specific image using the image Id. The data is sent in the JSON format which inlcudes the \"rating\" key with the rating value.\n\nThe response will include the successful addition with the added data and the updated average ratings field."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Ratings for an Image",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/images/b45bc927-cda4-4f86-a3ea-47b98c9d5a1d/ratings",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images",
+						"b45bc927-cda4-4f86-a3ea-47b98c9d5a1d",
+						"ratings"
+					]
+				},
+				"description": "This is a GET request for fetching the list of ratings for a specific image using image Id. The api is `/api/images/:id/ratings` where `:id` is the Id of the image for which ratings are being fetched."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Image File",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/images/image/1749199635045-pexels-binyaminmellish-1396122.jpg",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"images",
+						"image",
+						"1749199635045-pexels-binyaminmellish-1396122.jpg"
+					]
+				},
+				"description": "This is a GET request to fetch and view the image file.\n\nIn the api, the `:filename` is the name of the actual image file which is generated after POST request for image data upload. Replacing the `:filename` with the image file name will allow you to view the image in the browser."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
